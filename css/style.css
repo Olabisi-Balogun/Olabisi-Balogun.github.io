@@ -1,0 +1,101 @@
+/* Create your test CSS here */
+
+body{
+	background-color: black; 
+	font: 14px sans-serif;
+}
+h1 {
+	color: white;
+	font-size: 40px;
+	text-align: center;
+}
+
+ h2{
+	color: white;
+	font-size: 30px;
+	text-align: center;
+ }
+p {
+  color: white;
+  font-size:  16px;
+}
+
+a:link, a:visited{
+	color: red;
+	text-decoration: underline;
+	cursor: pointer;
+}
+a:link:active,
+a:visited:active{
+	color: limegreen;
+}
+/* Add a background color to the top navigation*/
+.topnav button{
+	background-color:lightgrey;
+	border: 10px solid black;
+	padding: 10px 24px;
+	cursor: pointer;
+	float: left;
+}
+.topnav button:not(:last-child){
+	border-right: none; /*prevent double borders*/
+}
+
+.topnav:after{
+	content: "";
+	clear: both;
+	display: table;
+}
+.topnav button:hover{
+	background-color: darkgrey;
+}
+
+
+#my_dataviz{
+	background-color: white;
+	border: 10px solid lightblue;
+	margin: auto;
+	width: 1000px;
+}
+
+.box{
+	/*position: relative;*/
+	width:1000px;
+	/*height: 1000px;*/
+	/*float: center;*/
+	/*margin: auto;*/
+	/*margin: 10px;*/
+	border: 10px solid lightblue;
+}
+.one{
+	background-color: white;
+}
+.two{
+	background-color: white;
+	width: 400px;
+	height: 300px;
+}
+
+.axis path,
+.axis line{
+	fill: none;
+	stroke: black;
+	stroke-width: 1;
+	shape-rendering: crispEdges; 
+}
+.label{
+	position: absolute;
+	text-align: center;
+}
+
+circle{
+	cursor: pointer;
+}
+rect{
+	cursor: pointer;
+}
+.line{
+	fill: none;
+	stroke: steelblue;
+	stroke-width: 2px;
+}
