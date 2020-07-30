@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Student Loan and Grant</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Load d3.js -->
+<script src="https://d3js.org/d3.v5.js"></script>
+<!-- Load d3-annotation -->
+<script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
+  </head>
+  <body> 
+  	<h1> U.S. College Fund Disbursement: Loan vs Grant</h1>
+  	<h2> A Unique Perspective </h2>
+  	
+  	<div>
+  		<p> A major concern for college-bound students and their parents in the United States is funding college education. Varieties of loans and grants are provided both at the federal and state level. Many students resort to acquiring financial aid, mostly the federal student loan. The website-<a target="_blank" href="https://www.debt.org/students/types-of-loans/"> Debt.org</a> reported that out of twenty million students enrolled in U.S. colleges and universities in 2019, 10 million received federal student loan from the William D. Ford Federal Direct Loan Program, an average of $9300 per student.<br> Another type of financial aid is the grant that does not need to be repaid. Grants are commonly granted based on the financial need of the student. An interesting angle to be explored in this context is the analysis of the student loan and grant by age and by location.</p>
+  	</div>
+    
+    <p class="label"></p> <br>
+   
+    
+  <div class="topnav" style="width:100%">
+  		<input type="button" name="overviewButton" value="Overview" onclick="document.location='overview.html'" /> 
+  		<input type="button" name="ageButton" value="Next >>" onclick="document.location='loanAge.html'" />
+  </div>
+  <!-- initialize a select button -->
+  <select id="selectButton"></select>
+  	<!-- Create a div where the graph will take place -->
+  <div id="my_dataviz"></div>
+
+
+  <script type="text/javascript">
+
+  //	function overview(){
+  			var label = d3.select(".label");
+//set the dimensions and margins of the graph
+	var margin = {top: 40, right: 80, bottom: 50, left: 70},
+        width = 600 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
+
+
+     //append the svg object to the body of the page
+      var svg = d3.select("#my_dataviz")
+            .append("svg")
+            .attr("width", width+margin.left+margin.right)
+            .attr("height", height+margin.top+margin.bottom)
+            .append("g")
+            .attr("transform","translate("+margin.left+','+margin.top+")");
+
+           // svg.append(".move.cursor")
+            //define the date parser
+            const parseDate = d3.timeParse("%Y");
+            const formatTime = d3.timeFormat("%Y");
+
+            //format the number
+            const formatDecimal = d3.format(".2f");
+
+            //define scales
+            var xScale = d3.scaleTime().range([0, width]);
+            var yScale = d3.scaleLinear().range([height, 0]);
+            var color = d3.scaleOrdinal(["#e74c3c", "#3498db"]);
+
+
+            //define axes
+            var xAxis = d3.axisBottom().scale(xScale);
+            var yAxis = d3.axisLeft().scale(yScale);
+
+            //define the line
+                  var valueline = d3.line()//.interpolate("linear")
+                              .x(function(d) {return xScale(d.year);})
+                              .y(function(d) {return yScale(d.amount);})
+
+            //read the data
+            ageData =  d3.csv("federal_aid_by_age.csv");
+            
+            ageData.then(function(data){
+                  
+                  //format the data field
+                  data.forEach(function(d){
+                       // d["Year"] = parseDate(d["Year"]);
+                        d["Loans-Disbursements (in billions)"] = +d["Loans-Disbursements (in billions)"];
+                        d["Disbursements(Total in billions)"] = +d["Disbursements(Total in billions)"];
+                        d["Grant-Disbursements (in billions)"] = +d["Grant-Disbursements (in billions)"];
+                        d["Grant-Recipients(in thousands)"] = +d["Grant-Recipients(in thousands)"];
+                        d["Loans-Recipients (in thousands)"] = +d["Loans-Recipients (in thousands)"];
+                        d["Recipients(Total in thousands)"] = +d["Recipients(Total in thousands)"];
+                  });
+
+                  //list all groups of column: Year
+                  //var groupYear = d3.map(data, function(d) {return(d.Year)}).keys()
+                  //use the nest() function to get the sum of loan and grant for each year
+
+                  var loanGrantPerYear = d3.nest()
+                                           .key(function(d) {return d.Year;})
+                                           .rollup(function(v) { return {"Loan": d3.sum(v,function(d) {return d["Loans-Disbursements (in billions)"];}),
+                                           	"Grant": d3.sum(v, function(d) {return  d["Grant-Disbursements (in billions)"];})
+                                           };})
+                                           .entries(data);
+                                         //  debugger;
+                  
+                  loanGrantPerYear.forEach(function(d) {
+                        d.key = parseDate(d.key);
+                        });
+
+                   color.domain(d3.keys(loanGrantPerYear[0].value));
+
+                 var loanAndGrant = color.domain().map(function(name){
+                 	return{
+                 		name: name,
+                 		values: loanGrantPerYear.map(function(d){
+                 			return {year: d.key, amount: (d.value)[name]};
+                 		})
+                 	};
+                 });
+
+                  //scale the range of the data
+                  xScale.domain(d3.extent(loanGrantPerYear, function(d) {return d.key;}));
+                  yScale.domain([0,
+                  	d3.max(loanAndGrant, function(g) { return d3.max(g.values, function(v) {return v.amount;});})
+                  	]);
+                  //debugger;  
+                  
+                  var eachLoanAndGrant = svg.selectAll(".eachLoanAndGrant")
+                             .data(loanAndGrant)
+                             .enter().append("g")
+                             .attr("class", "eachLoanAndGrant");
+                  
+                  var path = eachLoanAndGrant.append("path")
+                      .attr("class", "line")
+                      .attr("d", function(d) {return valueline(d.values);})
+                      .style("stroke", function(d) {return color(d.name);})
+                   
+                   //add line labels
+                   eachLoanAndGrant.append("text")
+                                   .datum(function(d) {return {name: d.name, value: d.values[d.values.length-1]};})
+                                   .attr("transform", function(d) {return "translate("+xScale(d.value.year)+","+yScale(d.value.amount)+")";})
+                                   .attr("x", 5)
+                                   .attr("dy", ".50em")
+                                   .text(function(d) {return d.name;});
+
+                eachLoanAndGrant.selectAll("circle")
+                                 .data(function(d){return d.values})
+                                 .enter()
+                                 .append("circle")
+                                 .attr("r", 5)
+                                 .attr("cx", function(d) {return xScale(d.year);})
+                                 .attr("cy", function(d) {return yScale(d.amount);})
+                                //debugger;
+
+
+             	var mouseG = svg.append("g")
+             	    .attr("class","mouse-over-effects");
+
+              //black vertical line that follows the mouse
+             	 mouseG.append("path") 
+             	      .attr("class","mouse-line")
+             	      .style("stroke", "black")
+             	      .style("stroke-width", "1px")
+             	      .style("opacity", "0");
+
+             	 var lines = document.getElementsByClassName('line');
+
+             	 var mousePerLine = mouseG.selectAll(".mouse-per-line")
+             	       .data(loanAndGrant)
+             	       .enter()
+             	       .append("g")
+             	       .attr("class","mouse-per-line");
+
+             	 mousePerLine.append("circle")
+             	       .attr("r", 7)
+             	       .style("stroke", function(d){
+             	       	return color(d.name);
+             	       })
+             	       .style("fill","none")
+             	       .style("stroke-width", "1px")
+             	       .style("opacity", "0");
+
+             	 mousePerLine.append("text")
+             	        .attr("transform","translate(10,3)");
+
+             	 mouseG.append("svg:rect")//append a rect to catch mouse 
+             	 		.attr("width", width)//movements on canvas
+                     	.attr("height", height)//not possible on g
+                     	.attr("fill", "none")
+                     	.attr("pointer-events", "all")
+                    .on("mouseout", function(){ //hide lines on mouse out
+                    	d3.select(".mouse-line")
+                    	   .style("opacity","0");
+                    	d3.selectAll(".mouse-per-line circle")
+                    	   .style("opacity", "0");
+                    	d3.selectAll(".mouse-per-line text")
+                    	   .style("opacity", "0");
+                     	})
+                    .on("mouseover", function(){ //show lines
+                    	d3.select(".mouse-line")
+                    	   .style("opacity", "1");
+                    	d3.selectAll(".mouse-per-line circle")
+                    	   .style("opacity", "1");
+                    	 d3.selectAll(".mouse-per-line text")
+                    	   .style("opacity", "1");
+                    })
+                 .on("mousemove", function() { //mouse moving over canvas
+                 	var mouse = d3.mouse(this);
+                 	d3.select(".mouse-line")
+                 	  .attr("d", function(){
+                 	  	var d = "M"+mouse[0]+","+height;
+                 	  	d += " "+mouse[0] + ","+0;
+                 	  	return d;
+                 	  });
+
+                 	  d3.selectAll(".mouse-per-line")
+                 	    .attr("transform", function(d, i){
+                 	    	//console.log(width/mouse[0])
+                 	    	var xYear = xScale.invert(mouse[0]),
+                 	    	   // bisect = d3.bisector(function(d) {return d.year;}).right;
+                 	    	   bisect = d3.bisector(d=>d.year).right;
+                 	    	    idx = bisect(d.values, xYear);
+
+                 	    	var beginning = 0,
+                 	    	    end = lines[i].getTotalLength(),
+                 	    	    target = null;
+
+                 	    	while (true){
+                 	    		target = Math.floor((beginning + end)/2);
+                 	    		position = lines[i].getPointAtLength(target);
+                 	    		//console.log(pos)
+                 	    		if ((target === end || target === beginning) && position.x !== mouse[0]){
+                 	    			break;
+                 	    		}
+                 	    		if (position.x > mouse[0]) {
+                 	    			end = target;
+                 	    		} else if (position.x < mouse[0]) {beginning = target;
+                 	    		} else {
+                 	    		break; //position found
+                 	    	}
+                 	    	}
+                 	    	d3.select(this).select("text")
+                 	    	   .text(yScale.invert(position.y).toFixed(2));
+
+                 	    	return "translate(" + mouse[0]+","+position.y +")";
+                 	    })
+                    });
+
+
+   				//add the x-axis
+                  svg.append("g")
+                  	  .attr("class", "x axis")
+                      .attr("transform","translate(0,"+height+")")
+                      .call(d3.axisBottom().ticks(d3.timeYear.every(1)).tickFormat(d3.timeFormat("%Y")).scale(xScale));
+
+                      //title for the x axis
+                          svg.append("text")
+                             .attr("transform","translate("+(width/2)+","+(height+margin.top)+")")
+                             .style("text-anchor", "middle")
+                             .text("Year");
+
+                      //add the y-axis
+                      svg.append("g")
+                          .attr("class", "y axis")
+                          .call(d3.axisLeft(yScale));
+
+                       //title for the y axis
+                       svg.append("text")
+                          .attr("transform","rotate(-90)")
+                          .attr("y", 0-margin.left)
+                          .attr("x", 0-(height/2))
+                          .attr("dy", "1em")
+                          .style("text-anchor", "middle")
+                          .text("Amount in Billion Dollars")
+
+                          //add instruction
+                          svg.append("text")
+                             .attr("x",(width/1.25))
+                             .attr("y", 0-(margin.top/2))
+                             .attr("text-anchor","end")
+                             .style("font-style", "italic")
+                             .style("font-family", "helvetica")
+                             .text("Move the cursor across the chart to view loan and grant values")
+
+                             //define transition style
+                const transitionPath = d3.transition()
+                                         .ease(d3.easeSin)
+                                         .duration(2500);
+                //get length of the path
+                const pathLength = path.node().getTotalLength();
+
+                path.attr("stroke-dashoffset", pathLength)
+                    .attr("stroke-dasharray", pathLength)
+                    .transition(transitionPath)
+                    .attr("stroke-dashoffset", 0);
+
+
+                //add annotation
+
+                var annotation1 = svg.append("text")
+                                    .attr("y", (height/7))
+                                    .style("fill","grey")
+
+                  annotation1.append("tspan")
+                            .attr("x", margin.left+(width/3))
+                            .text("Continuous decrement in disbursed loans.")
+
+                    annotation1.append("tspan")
+                              .attr("x", margin.left+(width/3))
+                              .attr("dy", "20")
+                            .text("Could it mean a reduction in college enrolment or")
+
+                   annotation1.append("tspan")
+                              .attr("x", margin.left+(width/3))
+                              .attr("dy", "20")
+                            .text("a reduction in the loan budget?");
+
+
+              var annotation2 =  svg.append("text")
+                            // .attr("x",(width/3))
+                             .attr("y", margin.top+(height/2.2))
+                             .style("fill", "grey")
+
+                      annotation2.append("tspan")
+                      .attr("x",(width/3))
+                      .text("Congress cut carry-over funding")
+                     
+                      annotation2.append("tspan")
+                                  .attr("x", (width/3))
+                                  .attr("dy", "15")
+                                 .text("for Pell Grants by $1.3 billion in 2017");
+                            
+
+                        //add annotation line
+                       svg.append("polyline")
+                      .style("stroke", "gray")
+                      .style("fill", "none")
+                      .attr("points", "150,280,160,260,250,260")
+
+                      svg.append("polyline")
+                      .style("stroke", "gray")
+                      .style("fill", "none")
+                      .attr("points", "200,10,230,40,350,40")
+
+
+                          
+                          
+              });
+                    
+                  
+
+                  //debugger;
+                 // console.log(groupYear);
+                  //console.log(JSON.stringify(loanPerYear));
+
+
+	</script>
+  </body>
+</html>
