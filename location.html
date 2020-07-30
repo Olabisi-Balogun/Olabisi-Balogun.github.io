@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Student Loan and Grant</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <!-- Load d3.js -->
+<script src="https://d3js.org/d3.v5.js"></script>
+<!-- Load d3-annotation -->
+<script src="https://d3js.org/topojson.v3.min.js"></script>
+    
+
+ <style>
+ /* Legend Font Style */
+
+.year-capture{
+    fill-opacity: 0;
+}
+/* lighten state color on mouse hover*/
+path:hover{
+	fill-opacity: .7;
+}
+        
+/* Legend Position Style */
+.legend {
+    position:relative;
+    left:20px;
+    top:30px;
+}
+
+.axis text {
+    font: 10px sans-serif;
+}
+
+.axis line, .axis path {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+div.tooltip{
+    position: absolute;
+    text-align: center;
+    width: 95px;
+    min-height: 35px;
+    padding: 8px 12px;
+    font: 12px sans-serif;
+    background: lightgray;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+} 
+</style>
+
+  </head>
+
+  <body>
+
+  	<h1> U.S. College Fund Disbursement: Loan vs Grant</h1>
+  	<h2> A Unique Perspective </h2>
+  	
+  	<div>
+  		<p> The student loan classification by states depicts a positive correlation of highly populated states and student loan accrued across the years presented in the study.</p>
+  	</div>
+
+  	<div class="topnav" style="width:100%">
+  		<input type="button" name="ageGrantButton" value="Previous <<" onclick="document.location='/grantAge.html'" />
+      <input type="button" name="overviewButton" value="Back to Overview" onclick="document.location='/overview.html'" /> 
+  		
+  </div>
+  	
+  	<div class="box one"> 
+
+  			<!--<div class="box two"> Second Div </div> -->
+  			<p>
+  				Map
+  			</p>
+
+
+  	</div>
+  
+  	<div class="home"></div>
+
+  	<script type="text/javascript">
+  		var margin = {top:40, right:80, bottom:30, left:50},
+    		width = 900 - margin.left-margin.right,
+    		height = 600 - margin.top-margin.bottom;
+
+            var lowColor = '#F3A49B'
+            var highColor = '#E74C3C'
+
+    		//create svg
+    		var svg = d3.select(".box.one")
+    		    .append("svg")
+    		    .attr("width", width+margin.left+margin.right)
+    		    .attr("height", height+margin.top+margin.bottom)
+                .append("g")
+                .attr("transform","translate("+margin.left+','+margin.top+")");
+
+    	//define the date parser
+            const parseDate = d3.timeParse("%Y");
+            const formatTime = d3.timeFormat("%Y");
+    		    
+                let option = "year2016";
+
+    		    //width and height of the whole viz
+    		    //set projection parameters
+    		    var projection = d3.geoAlbersUsa()
+    		              .translate([width/2, height/2])
+    		              .scale([1000]);
+    		             
+
+    		  //create GeoPath function that uses built-in D3 //functionality to turn lat/lon coordinates into screen coordinates
+
+    		  var geoPath = d3.geoPath()
+    		      .projection(projection);
+
+
+//load loan data by states
+
+        d3.csv("/data/federal_aid_by_location.csv").then(function(data){
+            const tooltip = d3.select(".home").append("div")
+                 .attr("class", "tooltip")
+                 .style("opacity", 0);
+
+            data.forEach(function(d){
+               //  d["Year"] = formatTime(d["Year"]);
+                        d["Loans-Disbursements(in millions)"] = +d["Loans-Disbursements(in millions)"];
+                        d["Grant-Disbursements(in millions)"] = +d["Grant-Disbursements(in millions)"];
+                        d["Grant-Recipients(in thousands)"] = +d["Grant-Recipients(in thousands)"];
+                        d["Loans-Recipients(in thousands)"] = +d["Loans-Recipients(in thousands)"];
+            });
+
+            //filter data to include only year 2017 data
+            var subset = data.filter(function(s){
+                return s.Year === "2016";
+            })
+
+            var dataArray = [];
+            for (var d=0; d<subset.length; d++){
+                dataArray.push(parseFloat(subset[d]["Loans-Disbursements(in millions)"]))
+            }
+            var minVal = d3.min(dataArray)
+            var maxVal = d3.max(dataArray)
+            var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+
+//load the geojson data and merger with state-loan data
+    	 d3.json("/data/us-states.json").then(function(json){
+           
+           //loop through each state data and loan in the csv file
+           for(var i=0; i<subset.length; i++){
+
+            //Grab State Name
+            var dataState = subset[i].Location;
+
+            //Grab state loan
+            var dataLoan = subset[i]["Loans-Disbursements(in millions)"];
+            var dataLoanRecipients = subset[i]["Loans-Recipients(in thousands)"];
+            //find corresponding state inside the GeoJSON
+            for(var j=0; j<json.features.length; j++){
+                var jsonState = json.features[j].properties.name;
+
+                if(dataState == jsonState){
+
+                    //copy the data value into the JSON
+                    json.features[j].properties.value = dataLoan;
+                  
+                     json.features[j].properties.value2 = dataLoanRecipients;
+                    //stop looking through the JSON
+                    break;
+                }
+            }
+           }
+
+					svg.selectAll("path")
+    		     	   .data(json.features)
+    		     	   .enter()
+    		     	   .append("path")
+    		     	  // .attr("class", "continent")
+    		     	   .attr("d", geoPath)
+                       .style("transition","all 0.2s ease-in-out")
+                       .style("stroke","#fff")
+                       .style("stroke-width", "1")
+                       .style("fill", function (d) {return loanScale(d.properties.value)})
+                       .on("mousemove", function(d){
+                          tooltip.transition()
+                                 .duration(200)
+                                 .style("opacity", .9);
+
+                    //tooltip listens to mouse movement
+
+                        tooltip.html(d.properties.name+"<br/>"+"Loan: "+d.properties.value+"M"+"<br/>"+"Recipients:"+d.properties.value2+"K")
+                            .style("left", (d3.event.pageX) + "px")
+                               .style("top", (d3.event.pageY) + "px")
+
+                       })
+                        .on("mouseover", function(d){
+                        d3.select(this)
+                         .style("cursor", "pointer");
+                       })
+                       .on("mouseout", function(d,i){
+                         d3.select(this).style("fill", function(){
+                            let loanValue = d.properties.value;
+                            return loanValue ? loanScale(loanValue): "#ccc";
+                         });
+                         tooltip.transition()
+                              .duration(500)
+                              .style("opacity", 0);
+                       });
+
+                       //add a legend
+                       var w=150, h = 300;
+
+                        
+                        var key = svg .append("g")
+                           .attr("width", w)
+                           .attr("height", h)
+                           .attr("class", "legend")
+                           .attr("transform", "translate(800, 50)");
+
+
+                        var legend = key.append("defs")
+                            .append("svg:linearGradient")
+                            .attr("id", "gradient")
+                            .attr("x1", "100%")
+                            .attr("y1","0%")
+                            .attr("x2", "100%")
+                            .attr("y2","100%")
+                            .attr("spreadMethod","pad");
+
+
+                            legend.append("stop")
+                                    .attr("offset", "0%")
+                                    .attr("stop-color", highColor)
+                                    .attr("stop-opacity", 1);
+                                    
+                            legend.append("stop")
+                                .attr("offset", "100%")
+                                .attr("stop-color", lowColor)
+                                .attr("stop-opacity", 1);
+
+                            key.append("rect")
+                                .attr("width", w - 100)
+                                .attr("height", h)
+                                .style("fill", "url(#gradient)")
+                              
+
+                                var y = d3.scaleLinear()
+                                     .range([h,0])
+                                     .domain([minVal, maxVal]);
+
+                                var yAxis = d3.axisRight(y);
+
+                                key.append("g")
+                                   .attr("class", "y axis")
+                                  .call(yAxis)
+
+            const form = d3.select(".box.one").append("form").on("change", function(){
+                option = d3.select("input[name='year']:checked").node().value;
+            });
+
+            form.append("input")
+                .attr("type", "radio")
+                .attr("name","year")
+                .attr("value","year2016")
+                .attr("checked", true)
+                .on("click", function(){
+
+
+                     var subset = data.filter(function(s){
+                                        return s.Year === "2016";
+                                })
+                                    var dataArray = [];
+            for (var d=0; d<subset.length; d++){
+                dataArray.push(parseFloat(subset[d]["Loans-Disbursements(in millions)"]))
+            }
+            var minVal = d3.min(dataArray)
+            var maxVal = d3.max(dataArray)
+            var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+
+
+         //loop through each state data and loan in the csv file
+           for(var i=0; i<subset.length; i++){
+
+            //Grab State Name
+            var dataState = subset[i].Location;
+
+            //Grab state loan
+            var dataLoan = subset[i]["Loans-Disbursements(in millions)"];
+            var dataLoanRecipients = subset[i]["Loans-Recipients(in thousands)"];
+            //find corresponding state inside the GeoJSON
+            for(var j=0; j<json.features.length; j++){
+                var jsonState = json.features[j].properties.name;
+
+                if(dataState == jsonState){
+
+                    //copy the data value into the JSON
+                    json.features[j].properties.value = dataLoan;
+                  
+                     json.features[j].properties.value2 = dataLoanRecipients;
+                    //stop looking through the JSON
+                    break;
+                }
+            }
+           }
+
+           svg.selectAll("path")
+                       .data(json.features)
+                       .enter()
+                       .append("path")
+                      // .attr("class", "continent")
+                       .attr("d", geoPath)
+                       .style("transition","all 0.2s ease-in-out")
+                       .style("stroke","#fff")
+                       .style("stroke-width", "1")
+                       .style("fill", function (d) {return loanScale(d.properties.value)})
+                       .on("mousemove", function(d){
+                          tooltip.transition()
+                                 .duration(200)
+                                 .style("opacity", .9);
+
+                    //tooltip listens to mouse movement
+
+                        tooltip.html(d.properties.name+"<br/>"+"Loan: "+d.properties.value+"M"+"<br/>"+"Recipients:"+d.properties.value2+"K")
+                            .style("left", (d3.event.pageX) + "px")
+                               .style("top", (d3.event.pageY) + "px")
+
+                               //text inside tooltip
+                           /* .text(()=> "{d.Location}: {d.properties.value}: ${d.Loans-Recipients(in thousands)}")*/
+                       })
+                       .on("mouseover", function(d){
+                        d3.select(this)
+                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
+                          .style("cursor", "pointer");
+                       })
+                       .on("mouseout", function(d,i){
+                         d3.select(this).style("fill", function(){
+                            let loanValue = d.properties.value;
+                            return loanValue ? loanScale(loanValue): "#ccc";
+                         });
+                         tooltip.transition()
+                              .duration(500)
+                              .style("opacity", 0);
+                       });
+
+                                var y = d3.scaleLinear()
+                                     .range([h,0])
+                                     .domain([minVal, maxVal]);
+
+                                var yAxis = d3.axisRight(y);
+
+                                key.select("g")
+                                   .attr("class", "y axis")
+                                   .call(yAxis)
+                })
+            form.append("span").html("2016")
+
+            form.append("input")
+                .attr("type", "radio")
+                .attr("name","year")
+                 .attr("value","year2017")
+                 .on("click", function(){
+                    var subset = data.filter(function(s){
+                        return s.Year === "2017";
+                    })
+            var dataArray = [];
+            for (var d=0; d<subset.length; d++){
+                dataArray.push(parseFloat(subset[d]["Loans-Disbursements(in millions)"]))
+            }
+            var minVal = d3.min(dataArray)
+            var maxVal = d3.max(dataArray)
+            var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+
+
+         //loop through each state data and loan in the csv file
+           for(var i=0; i<subset.length; i++){
+
+            //Grab State Name
+            var dataState = subset[i].Location;
+
+            //Grab state loan
+            var dataLoan = subset[i]["Loans-Disbursements(in millions)"];
+            var dataLoanRecipients = subset[i]["Loans-Recipients(in thousands)"];
+            //find corresponding state inside the GeoJSON
+            for(var j=0; j<json.features.length; j++){
+                var jsonState = json.features[j].properties.name;
+
+                if(dataState == jsonState){
+
+                    //copy the data value into the JSON
+                    json.features[j].properties.value = dataLoan;
+                  
+                     json.features[j].properties.value2 = dataLoanRecipients;
+                    //stop looking through the JSON
+                    break;
+                }
+            }
+           }
+           svg.selectAll("path")
+                       .data(json.features)
+                       .enter()
+                       .append("path")
+                      // .attr("class", "continent")
+                       .attr("d", geoPath)
+                       .style("transition","all 0.2s ease-in-out")
+                       .style("stroke","#fff")
+                       .style("stroke-width", "1")
+                       .style("fill", function (d) {return loanScale(d.properties.value)})
+                       .on("mousemove", function(d){
+                          tooltip.transition()
+                                 .duration(200)
+                                 .style("opacity", .9);
+
+                    //tooltip listens to mouse movement
+
+                        tooltip.html(d.properties.name+"<br/>"+"Loan: "+d.properties.value+"M"+"<br/>"+"Recipients:"+d.properties.value2+"K")
+                            .style("left", (d3.event.pageX) + "px")
+                               .style("top", (d3.event.pageY) + "px")
+
+                       })
+                       .on("mouseover", function(d){
+                        d3.select(this)
+                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
+                          .style("cursor", "pointer");
+                       })
+                       .on("mouseout", function(d,i){
+                         d3.select(this).style("fill", function(){
+                            let loanValue = d.properties.value;
+                            return loanValue ? loanScale(loanValue): "#ccc";
+                         });
+                         tooltip.transition()
+                              .duration(500)
+                              .style("opacity", 0);
+                       });
+
+                                var y = d3.scaleLinear()
+                                     .range([h,0])
+                                     .domain([minVal, maxVal]);
+
+                                var yAxis = d3.axisRight(y);
+
+                                key.select("g")
+                                   .attr("class", "y axis")
+                                   .call(yAxis)    
+                               })
+
+          form.append("span").html("2017")
+
+            form.append("input")
+                .attr("type", "radio")
+                .attr("name","year")
+                 .attr("value","year2018")
+                 .on("click", function(){
+                // d3.select('body').selectAll('key').remove();
+                    
+
+                     var subset = data.filter(function(s){
+                                        return s.Year === "2018";
+                                })
+                                    var dataArray = [];
+            for (var d=0; d<subset.length; d++){
+                dataArray.push(parseFloat(subset[d]["Loans-Disbursements(in millions)"]))
+            }
+            var minVal = d3.min(dataArray)
+            var maxVal = d3.max(dataArray)
+            var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+
+            //loop through each state data and loan in the csv file
+           for(var i=0; i<subset.length; i++){
+
+            //Grab State Name
+            var dataState = subset[i].Location;
+
+            //Grab state loan
+            var dataLoan = subset[i]["Loans-Disbursements(in millions)"];
+            var dataLoanRecipients = subset[i]["Loans-Recipients(in thousands)"];
+            //find corresponding state inside the GeoJSON
+            for(var j=0; j<json.features.length; j++){
+                var jsonState = json.features[j].properties.name;
+
+                if(dataState == jsonState){
+
+                    //copy the data value into the JSON
+                    json.features[j].properties.value = dataLoan;
+                  
+                     json.features[j].properties.value2 = dataLoanRecipients;
+                    //stop looking through the JSON
+                    break;
+                }
+            }
+           }
+           svg.selectAll("path")
+                       .data(json.features)
+                       .enter()
+                       .append("path")
+                      // .attr("class", "continent")
+                       .attr("d", geoPath)
+                       .style("transition","all 0.2s ease-in-out")
+                       .style("stroke","#fff")
+                       .style("stroke-width", "1")
+                       .style("fill", function (d) {return loanScale(d.properties.value)})
+                       .on("mousemove", function(d){
+                          tooltip.transition()
+                                 .duration(200)
+                                 .style("opacity", .9);
+
+                    //tooltip listens to mouse movement
+
+                        tooltip.html(d.properties.name+"<br/>"+"Loan: "+d.properties.value+"M"+"<br/>"+"Recipients:"+d.properties.value2+"K")
+                            .style("left", (d3.event.pageX) + "px")
+                               .style("top", (d3.event.pageY) + "px")
+
+                       })
+                       .on("mouseover", function(d){
+                        d3.select(this)
+                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
+                          .style("cursor", "pointer");
+                       })
+                       .on("mouseout", function(d,i){
+                         d3.select(this).style("fill", function(){
+                            let loanValue = d.properties.value;
+                            return loanValue ? loanScale(loanValue): "#ccc";
+                         });
+                         tooltip.transition()
+                              .duration(500)
+                              .style("opacity", 0);
+                       });
+
+
+                                var y = d3.scaleLinear()
+                                     .range([h,0])
+                                     .domain([minVal, maxVal]);
+
+                                var yAxis = d3.axisRight(y);
+
+                                key.select("g")
+                                   .attr("class", "y axis")
+                                   .call(yAxis)
+
+                 })
+                 form.append("span").html("2018")
+
+            form.append("input")
+                .attr("type", "radio")
+                .attr("name","year")
+                 .attr("value","year2019")
+                 .on("click", function(){
+
+                     var subset = data.filter(function(s){
+                                        return s.Year === "2019";
+                                })
+                                    var dataArray = [];
+            for (var d=0; d<subset.length; d++){
+                dataArray.push(parseFloat(subset[d]["Loans-Disbursements(in millions)"]))
+            }
+            var minVal = d3.min(dataArray)
+            var maxVal = d3.max(dataArray)
+            var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+
+            //loop through each state data and loan in the csv file
+           for(var i=0; i<subset.length; i++){
+
+            //Grab State Name
+            var dataState = subset[i].Location;
+
+            //Grab state loan
+            var dataLoan = subset[i]["Loans-Disbursements(in millions)"];
+            var dataLoanRecipients = subset[i]["Loans-Recipients(in thousands)"];
+            //find corresponding state inside the GeoJSON
+            for(var j=0; j<json.features.length; j++){
+                var jsonState = json.features[j].properties.name;
+
+                if(dataState == jsonState){
+
+                    //copy the data value into the JSON
+                    json.features[j].properties.value = dataLoan;
+                  
+                     json.features[j].properties.value2 = dataLoanRecipients;
+                    //stop looking through the JSON
+                    break;
+                }
+            }
+           }
+           svg.selectAll("path")
+                       .data(json.features)
+                       .enter()
+                       .append("path")
+                      // .attr("class", "continent")
+                       .attr("d", geoPath)
+                       .style("transition","all 0.2s ease-in-out")
+                       .style("stroke","#fff")
+                       .style("stroke-width", "1")
+                       .style("fill", function (d) {return loanScale(d.properties.value)})
+                       .on("mousemove", function(d){
+                          tooltip.transition()
+                                 .duration(200)
+                                 .style("opacity", .9);
+
+                    //tooltip listens to mouse movement
+
+                        tooltip.html(d.properties.name+"<br/>"+"Loan: "+d.properties.value+"M"+"<br/>"+"Recipients:"+d.properties.value2+"K")
+                            .style("left", (d3.event.pageX) + "px")
+                               .style("top", (d3.event.pageY) + "px")
+
+                              
+                       })
+                       .on("mouseover", function(d){
+                        d3.select(this)
+                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
+                          .style("cursor", "pointer");
+                       })
+                       .on("mouseout", function(d,i){
+                         d3.select(this).style("fill", function(){
+                            let loanValue = d.properties.value;
+                            return loanValue ? loanScale(loanValue): "#ccc";
+                         });
+                         tooltip.transition()
+                              .duration(500)
+                              .style("opacity", 0);
+                       });
+
+                                var y = d3.scaleLinear()
+                                     .range([h,0])
+                                     .domain([minVal, maxVal]);
+
+                                var yAxis = d3.axisRight(y);
+                              
+
+                               key.select('g')
+                                   .attr("class", "y axis")
+                                   .call(yAxis)
+                 })
+                form.append("span").html("2019")
+
+                //add instruction
+                         var annotation =  svg.append("text")
+                            // .attr("x",(width/2))
+                             .attr("y", 0-(margin.top/1.4))
+                           //  .attr("text-anchor","end")
+                            // .style("font-style", "italic")
+                           //  .style("font-family", "helvetica")
+                            // .text("Choose age group from the drop down menu")
+
+                      annotation.append("tspan")
+                                .attr("x", (width/250))
+                                .text("Rising college cost has continued to contribute to the increase in student loans. ")
+
+                      annotation.append("tspan")
+                                .attr("x", (width/250))
+                                .attr("dy", "20")
+                                .text("A report by 'CNBC Make It' stated that state cuts to spending on ")
+
+                      annotation.append("tspan")
+                                .attr("x", (width/250))
+                                .attr("dy", "20")
+                                .text("higher education has contributed significantly to the student loan dilemma. ")
+
+                       annotation.append("tspan")
+                                .attr("x", (width/250))
+                                .attr("dy", "25")
+                                .text("Choose year and move cursor over state to see loan amount")
+                                .style("font-style","italic")
+                                .style("fill","grey")
+
+                        var link = "link to article";
+
+                      var  hold = svg.append("a")
+                            .attr("xlink:href","https://www.cnbc.com/2019/12/13/cost-of-college-increased-by-more-than-25percent-in-the-last-10-years.html")
+                            .append("rect")
+                            .attr("x", (width/2)+20)
+                            .attr("y", 0- (margin.top/2.1))
+                            .attr("height",18)
+                            .attr("width", 100)
+                            .attr("rx", 2)
+                            .attr("ry",2);
+
+                          svg.append("text")
+                              .attr("x",(width/2)+70)
+                              .attr("y",0-(margin.top/3))
+                              .style("text-anchor","middle")
+                              .attr("dy",".40em")
+                              .style("fill","red")
+                                .text(link);
+
+
+       });
+
+
+        });
+
+
+
+
+
+  	</script>
+  </body>
+
+
+  </html>
