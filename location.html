@@ -60,25 +60,29 @@ div.tooltip{
   	<div>
   		<p> The student loan classification by states depicts a positive correlation of highly populated states and student loan accrued across the years presented in the study.</p>
   	</div>
+    <div>
+      <p style="color: black"> Map <p>
+    </div>
+    
 
   	<div class="topnav" style="width:100%">
-  		<input type="button" name="ageGrantButton" value="Previous <<" onclick="document.location='/grantAge.html'" />
-      <input type="button" name="overviewButton" value="Back to Overview" onclick="document.location='/overview.html'" /> 
+  		<input type="button" name="ageGrantButton" value="Previous <<" onclick="document.location='grantAge.html'" />
+      <input type="button" name="overviewButton" value="Back to Overview" onclick="document.location='overview.html'" /> 
   		
   </div>
   	
   	<div class="box one"> 
 
-  			<!--<div class="box two"> Second Div </div> -->
-  			<p>
-  				Map
-  			</p>
-
-
+      <div class="label">
+     <h4 class="year" style="color: black">2016 </h4>
+      <p style="color: black"> Total Loan:<strong class="total"> 94287.10M</strong></p>
+      <p style="color: black"> Total Recipients: <strong class="recipients">8547K</p>
+    </div>
   	</div>
   
-  	<div class="home"></div>
 
+  	<div class="home"></div>
+    
   	<script type="text/javascript">
   		var margin = {top:40, right:80, bottom:30, left:50},
     		width = 900 - margin.left-margin.right,
@@ -91,15 +95,19 @@ div.tooltip{
     		var svg = d3.select(".box.one")
     		    .append("svg")
     		    .attr("width", width+margin.left+margin.right)
-    		    .attr("height", height+margin.top+margin.bottom)
+    		    .attr("height", height+margin.top)
                 .append("g")
-                .attr("transform","translate("+margin.left+','+margin.top+")");
+                .attr("transform","translate("+(margin.left)+','+(margin.top)+")");
 
     	//define the date parser
             const parseDate = d3.timeParse("%Y");
             const formatTime = d3.timeFormat("%Y");
     		    
                 let option = "year2016";
+
+                //format the number
+            const formatDecimal = d3.format(".2f");
+            const formatInteger = d3.format(".0f");
 
     		    //width and height of the whole viz
     		    //set projection parameters
@@ -120,6 +128,7 @@ div.tooltip{
             const tooltip = d3.select(".home").append("div")
                  .attr("class", "tooltip")
                  .style("opacity", 0);
+                       
 
             data.forEach(function(d){
                //  d["Year"] = formatTime(d["Year"]);
@@ -128,6 +137,17 @@ div.tooltip{
                         d["Grant-Recipients(in thousands)"] = +d["Grant-Recipients(in thousands)"];
                         d["Loans-Recipients(in thousands)"] = +d["Loans-Recipients(in thousands)"];
             });
+            //group loan amount and loan recipients by year
+            var byYear = d3.nest()
+                           .key(function(d) {return d.Year;})
+                           .rollup(function(v) {return {"Total Loan":d3.sum(v, function(d) {return d["Loans-Disbursements(in millions)"];}),
+                            "Total Recipients": d3.sum(v, function(d) {return d["Loans-Recipients(in thousands)"];})
+                          };})
+                           .entries(data);
+                         //  debugger;
+                  
+
+                           //debugger;
 
             //filter data to include only year 2017 data
             var subset = data.filter(function(s){
@@ -195,6 +215,7 @@ div.tooltip{
                         .on("mouseover", function(d){
                         d3.select(this)
                          .style("cursor", "pointer");
+                        
                        })
                        .on("mouseout", function(d,i){
                          d3.select(this).style("fill", function(){
@@ -205,6 +226,8 @@ div.tooltip{
                               .duration(500)
                               .style("opacity", 0);
                        });
+
+                                       
 
                        //add a legend
                        var w=150, h = 300;
@@ -252,6 +275,7 @@ div.tooltip{
                                 key.append("g")
                                    .attr("class", "y axis")
                                   .call(yAxis)
+                      
 
             const form = d3.select(".box.one").append("form").on("change", function(){
                 option = d3.select("input[name='year']:checked").node().value;
@@ -275,6 +299,12 @@ div.tooltip{
             var minVal = d3.min(dataArray)
             var maxVal = d3.max(dataArray)
             var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+           // debugger;
+
+           //display a summary of loan collected per year
+            d3.select(".year").text(byYear[0].key);
+            d3.select(".total").text(formatDecimal(byYear[0].value["Total Loan"])+"M");
+            d3.select(".recipients").text(formatInteger(byYear[0].value["Total Recipients"])+"K");
 
 
          //loop through each state data and loan in the csv file
@@ -323,12 +353,9 @@ div.tooltip{
                             .style("left", (d3.event.pageX) + "px")
                                .style("top", (d3.event.pageY) + "px")
 
-                               //text inside tooltip
-                           /* .text(()=> "{d.Location}: {d.properties.value}: ${d.Loans-Recipients(in thousands)}")*/
                        })
                        .on("mouseover", function(d){
                         d3.select(this)
-                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
                           .style("cursor", "pointer");
                        })
                        .on("mouseout", function(d,i){
@@ -369,6 +396,11 @@ div.tooltip{
             var maxVal = d3.max(dataArray)
             var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
 
+            //display a summary of loan collected per year
+            d3.select(".year").text(byYear[1].key);
+            d3.select(".total").text(formatDecimal(byYear[1].value["Total Loan"])+"M");
+            d3.select(".recipients").text(formatInteger(byYear[1].value["Total Recipients"])+"K");
+
 
          //loop through each state data and loan in the csv file
            for(var i=0; i<subset.length; i++){
@@ -418,7 +450,6 @@ div.tooltip{
                        })
                        .on("mouseover", function(d){
                         d3.select(this)
-                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
                           .style("cursor", "pointer");
                        })
                        .on("mouseout", function(d,i){
@@ -449,7 +480,7 @@ div.tooltip{
                 .attr("name","year")
                  .attr("value","year2018")
                  .on("click", function(){
-                // d3.select('body').selectAll('key').remove();
+               
                     
 
                      var subset = data.filter(function(s){
@@ -462,6 +493,11 @@ div.tooltip{
             var minVal = d3.min(dataArray)
             var maxVal = d3.max(dataArray)
             var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
+
+            //display a summary of loan collected per year
+            d3.select(".year").text(byYear[2].key);
+            d3.select(".total").text(formatDecimal(byYear[2].value["Total Loan"])+"M");
+            d3.select(".recipients").text(formatInteger(byYear[2].value["Total Recipients"])+"K");
 
             //loop through each state data and loan in the csv file
            for(var i=0; i<subset.length; i++){
@@ -511,7 +547,6 @@ div.tooltip{
                        })
                        .on("mouseover", function(d){
                         d3.select(this)
-                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
                           .style("cursor", "pointer");
                        })
                        .on("mouseout", function(d,i){
@@ -555,6 +590,11 @@ div.tooltip{
             var maxVal = d3.max(dataArray)
             var loanScale = d3.scaleLinear().domain([minVal, maxVal]).range([lowColor, highColor])
 
+            //display a summary of loan collected per year
+            d3.select(".year").text(byYear[3].key);
+            d3.select(".total").text(formatDecimal(byYear[3].value["Total Loan"])+"M");
+            d3.select(".recipients").text(formatInteger(byYear[3].value["Total Recipients"])+"K");
+
             //loop through each state data and loan in the csv file
            for(var i=0; i<subset.length; i++){
 
@@ -604,7 +644,6 @@ div.tooltip{
                        })
                        .on("mouseover", function(d){
                         d3.select(this)
-                          .style("fill", tinycolor(loanScale(d.properties.value)).darken(15).toString())
                           .style("cursor", "pointer");
                        })
                        .on("mouseout", function(d,i){
@@ -640,21 +679,21 @@ div.tooltip{
                             // .text("Choose age group from the drop down menu")
 
                       annotation.append("tspan")
-                                .attr("x", (width/250))
-                                .text("Rising college cost has continued to contribute to the increase in student loans. ")
+                                .attr("x", (width/3))
+                                .text("Rising college cost has continued to contribute to the increase in average student loan. ")
 
                       annotation.append("tspan")
-                                .attr("x", (width/250))
+                                .attr("x", (width/3))
                                 .attr("dy", "20")
-                                .text("A report by 'CNBC Make It' stated that state cuts to spending on ")
+                                .text("A report by 'CNBC Make It' stated that state cuts to spending on higher education has")
 
                       annotation.append("tspan")
-                                .attr("x", (width/250))
+                                .attr("x", (width/3))
                                 .attr("dy", "20")
-                                .text("higher education has contributed significantly to the student loan dilemma. ")
+                                .text("contributed significantly to the student loan dilemma. ")
 
                        annotation.append("tspan")
-                                .attr("x", (width/250))
+                                .attr("x", (width/3))
                                 .attr("dy", "25")
                                 .text("Choose year and move cursor over state to see loan amount")
                                 .style("font-style","italic")
@@ -665,18 +704,18 @@ div.tooltip{
                       var  hold = svg.append("a")
                             .attr("xlink:href","https://www.cnbc.com/2019/12/13/cost-of-college-increased-by-more-than-25percent-in-the-last-10-years.html")
                             .append("rect")
-                            .attr("x", (width/2)+80)
-                            .attr("y", 0- (margin.top/6.5))
+                            .attr("x", (width/2)+200)
+                            .attr("y", 0-(margin.top/7))
                             .attr("height",18)
                             .attr("width", 100)
                             .attr("rx", 2)
                             .attr("ry",2);
 
                           svg.append("text")
-                              .attr("x",(width/2)+130)
-                              .attr("y",0-(margin.top/150))
+                              .attr("x",(width/2)+250)
+                              .attr("y",0-(margin.top/300))
                               .style("text-anchor","middle")
-                              .attr("dy",".40em")
+                              .attr("dy",".45em")
                               .style("fill","red")
                                 .text(link);
 
@@ -685,9 +724,6 @@ div.tooltip{
 
 
         });
-
-
-
 
 
   	</script>
