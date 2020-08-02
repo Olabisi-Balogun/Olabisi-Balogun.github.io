@@ -49,6 +49,9 @@ a:visited:active{
 .topnav button:hover{
 	background-color: darkgrey;
 }
+.topnav .current{
+	background-color: #585858;
+}
 
 
 #my_dataviz{
