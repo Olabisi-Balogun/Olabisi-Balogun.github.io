@@ -6,8 +6,6 @@
     <link rel="stylesheet" href="/css/style.css">
     <!-- Load d3.js -->
 <script src="https://d3js.org/d3.v5.js"></script>
-<!-- Load d3-annotation -->
-<script src="https://rawgit.com/susielu/d3-annotation/master/d3-annotation.min.js"></script>
   </head>
   <body> 
   	<h1> U.S. College Fund Disbursement: Loan vs Grant</h1>
@@ -17,11 +15,8 @@
   		<p> A major concern for college-bound students and their parents in the United States is funding college education. Varieties of loans and grants are provided both at the federal and state levels. Many students resort to acquiring financial aid, mostly the federal student loan. The website-<a target="_blank" href="https://www.debt.org/students/types-of-loans/"> Debt.org</a> reported that out of twenty million students enrolled in U.S. colleges and universities in 2019, 10 million received federal student loan from the William D. Ford Federal Direct Loan Program, an average of $9300 per student.<br> Another type of financial aid is the grant that does not need to be repaid. Grants are commonly granted based on the financial need of the student. An interesting angle to be explored in this context is the analysis of the student loan and grant by age and by location.</p>
   	</div>
     
-    <p class="label"></p> <br>
-
-    
   <div class="topnav" style="width:100%">
-	  <input type="button" name="overviewButton" value="Overview" onclick="document.location='/overview.html'" /> 
+	  <input type="button" class = "current" name="overviewButton" value="Overview" onclick="document.location='/overview.html'" /> 
   		<input type="button" name="ageButton" value="Loan Disbursement By Age" onclick="document.location='/loanAge.html'"/>
   		<input type="button" name="ageGrantButton" value="Grant Disbursement By Age" onclick="document.location='/grantAge.html'" />
   		<input type="button" name="locationButton" value="Loan Disbursement By Location" onclick="document.location='/location.html'"/>
@@ -264,7 +259,7 @@
                  	    	while (true){
                  	    		target = Math.floor((beginning + end)/2);
                  	    		position = lines[i].getPointAtLength(target);
-                 	    		//console.log(pos)
+                 	    		//console.log(position)
                  	    		if ((target === end || target === beginning) && position.x !== mouse[0]){
                  	    			break;
                  	    		}
